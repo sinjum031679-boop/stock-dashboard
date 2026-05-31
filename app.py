@@ -225,21 +225,22 @@ def make_treemap(df):
         maxdepth=2,
     )
     fig.update_layout(
-        margin=dict(t=0,l=10,r=80,b=0),
+        margin=dict(t=0,l=0,r=60,b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         coloraxis_showscale=True,
-        coloraxis_colorbar=dict(
-            title="등락률(%)",
-            titlefont=dict(color="#888",size=10),
-            tickfont=dict(color="#888",size=9),
+        height=500,
+    )
+    fig.update_coloraxes(
+        colorbar=dict(
+            title=dict(text="등락률", font=dict(color="#888", size=10)),
+            tickfont=dict(color="#888", size=9),
             thickness=12,
             len=0.8,
             x=1.01,
             tickvals=[-3,-2,-1,0,1,2,3],
-            ticktext=["-3%","-2%","-1%","0%","+1%","+2%","+3%"],
-        ),
-        height=500,
+            ticktext=["-3%","-2%","-1%","0","+1%","+2%","+3%"],
+        )
     )
     # 클릭시 드릴다운 완전 비활성화
     fig.update_traces(root_color="rgba(0,0,0,0)")
