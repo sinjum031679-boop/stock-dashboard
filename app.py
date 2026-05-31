@@ -143,6 +143,8 @@ def load_stock_detail(ticker, is_kr=False):
 
 # ── 히트맵 생성 ──────────────────────────────────────────
 def make_treemap(df, size_col="mcap"):
+    df = df.copy()
+    df["change"] = df["change"].round(2)
     fig = px.treemap(
         df,
         path=["sector", "name"],
@@ -153,7 +155,6 @@ def make_treemap(df, size_col="mcap"):
         range_color=[-3, 3],
         custom_data=["ticker","price","change"],
     )
-    df["change"] = df["change"].round(2)
     fig.update_traces(
         texttemplate="<b>%{label}</b><br>%{customdata[2]:+.2f}%",
         hovertemplate="<b>%{label}</b><br>가격: %{customdata[1]:,.0f}<br>등락: %{customdata[2]:+.2f}%<extra></extra>",
@@ -457,4 +458,3 @@ with col_figure:
 # ── 자동 새로고침 (5분) ──────────────────────────────────
 st.markdown("---")
 st.caption("💡 데이터는 5분마다 자동 캐시 갱신됩니다. 수동 새로고침은 상단 버튼을 이용하세요.")
-
