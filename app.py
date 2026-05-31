@@ -222,6 +222,7 @@ def make_treemap(df):
         marker_line_width=2,
         marker_line_color="rgba(0,0,0,0.4)",
         marker_pad_t=18,
+        maxdepth=2,
     )
     fig.update_layout(
         margin=dict(t=0,l=0,r=0,b=0),
@@ -230,6 +231,10 @@ def make_treemap(df):
         coloraxis_showscale=False,
         height=500,
     )
+    fig.update_traces(root_color="rgba(0,0,0,0)")
+    # 클릭 드릴다운 비활성화
+    fig.data[0].hovertemplate = fig.data[0].hovertemplate
+    config = {"staticPlot": False, "scrollZoom": False}
     return fig
 
 def make_chart(hist, ticker):
@@ -439,7 +444,7 @@ def render_market(heatmap_sectors, all_data_fn, kr_names, is_kr, key_prefix):
     with col_map:
         st.markdown("##### 히트맵 (주요 종목, 시가총액 기준)")
         fig = make_treemap(df_map)
-        st.plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_treemap")
+        st.plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_treemap", config={"scrollZoom": False, "doubleClick": "reset"})
 
     with col_detail:
         if selected:
