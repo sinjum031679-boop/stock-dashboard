@@ -225,16 +225,24 @@ def make_treemap(df):
         maxdepth=2,
     )
     fig.update_layout(
-        margin=dict(t=0,l=0,r=0,b=0),
+        margin=dict(t=0,l=10,r=80,b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        coloraxis_showscale=False,
+        coloraxis_showscale=True,
+        coloraxis_colorbar=dict(
+            title="등락률(%)",
+            titlefont=dict(color="#888",size=10),
+            tickfont=dict(color="#888",size=9),
+            thickness=12,
+            len=0.8,
+            x=1.01,
+            tickvals=[-3,-2,-1,0,1,2,3],
+            ticktext=["-3%","-2%","-1%","0%","+1%","+2%","+3%"],
+        ),
         height=500,
     )
+    # 클릭시 드릴다운 완전 비활성화
     fig.update_traces(root_color="rgba(0,0,0,0)")
-    # 클릭 드릴다운 비활성화
-    fig.data[0].hovertemplate = fig.data[0].hovertemplate
-    config = {"staticPlot": False, "scrollZoom": False}
     return fig
 
 def make_chart(hist, ticker):
@@ -418,7 +426,7 @@ def render_market(heatmap_sectors, all_data_fn, kr_names, is_kr, key_prefix):
     with c4: st.markdown(f'<div class="metric-card"><div class="metric-val">{len(df_all)}</div><div class="metric-lbl">전체 종목</div></div>', unsafe_allow_html=True)
 
     st.markdown("---")
-    col_detail, col_map, col_sidebar = st.columns([2,5,2])
+    col_detail, col_map, col_sidebar = st.columns([3,4,3])
 
     with col_sidebar:
         st.markdown("##### 전체 종목")
@@ -437,14 +445,28 @@ def render_market(heatmap_sectors, all_data_fn, kr_names, is_kr, key_prefix):
             sign = "▲" if chg>0 else "▼" if chg<0 else "―"
             return f"{row['ticker']} {row['name']} {sign}{abs(chg):.2f}%"
 
-        options = df_f["ticker"].tolist()
-        labels  = {row["ticker"]: fmt_label(row) for _, row in df_f.iterrows()}
-        selected = st.radio("종목 선택", options, format_func=lambda x: labels.get(x,x), key=f"{key_prefix}_radio", label_visibility="collapsed")
+        # 스크롤 가능한 종목 리스트
+        df_display = df_f[["ticker","name","change"]].copy()
+        df_display.columns = ["티커","기업명","등락률(%)"]
+        df_display["등락률(%)"] = df_display["등락률(%)"].apply(lambda x: f"{x:+.2f}%")
+        
+        selected_row = st.dataframe(
+            df_display,
+            use_container_width=True,
+            hide_index=True,
+            height=450,
+            on_select="rerun",
+            selection_mode="single-row",
+            key=f"{key_prefix}_table"
+        )
+        # 선택된 종목 처리
+        sel_rows = selected_row.selection.rows if hasattr(selected_row, "selection") else []
+        selected = df_f.iloc[sel_rows[0]]["ticker"] if sel_rows else df_f.iloc[0]["ticker"]
 
     with col_map:
         st.markdown("##### 히트맵 (주요 종목, 시가총액 기준)")
         fig = make_treemap(df_map)
-        st.plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_treemap", config={"scrollZoom": False, "doubleClick": "reset"})
+        st.plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_treemap", config={"scrollZoom": False, "doubleClick": False, "displayModeBar": False})
 
     with col_detail:
         if selected:
