@@ -32,7 +32,7 @@ SP500_SECTORS = {
     "Technology": ["MSFT","AAPL","NVDA","AVGO","AMD","ORCL","MU","AMAT","TXN","ADI","QCOM","INTC","CRM","NOW","PANW","CRWD","FTNT","KLAC","LRCX","MCHP"],
     "Consumer Cyclical": ["AMZN","TSLA","HD","MCD","NKE","SBUX","LOW","TJX","BKNG","MAR","HLT","CCL","RCL","F","GM","PHM","DHI","LEN"],
     "Communication": ["GOOGL","META","NFLX","DIS","CMCSA","VZ","T","TMUS","CHTR","EA","TTWO"],
-    "Financial": ["JPM","BRK-B","V","MA","BAC","WFC","GS","MS","C","AXP","BLK","SCHW","CB","PGR","ALL","TRV","MET","PRU","AFL"],
+    "Financial": ["JPM","BRK.B","V","MA","BAC","WFC","GS","MS","C","AXP","BLK","SCHW","CB","PGR","ALL","TRV","MET","PRU","AFL"],
     "Healthcare": ["LLY","UNH","JNJ","ABT","PFE","MRK","TMO","DHR","MDT","SYK","BSX","ISRG","AMGN","GILD","BIIB","REGN"],
     "Industrials": ["GE","CAT","BA","HON","RTX","LMT","NOC","GD","UPS","FDX","CSX","NSC","UNP","EMR","ETN","PH","ROK","AME"],
     "Consumer Defensive": ["WMT","PG","COST","KO","PEP","PM","MO","CL","TGT","K","KHC","KMB","SYY","TSN","MNST","STZ"],
@@ -53,7 +53,7 @@ SP500_KR = {
     "PHM":"풀테홈스","DHI":"DR호튼","LEN":"레나",
     "GOOGL":"구글","META":"메타","NFLX":"넷플릭스","DIS":"디즈니","CMCSA":"컴캐스트",
     "VZ":"버라이즌","T":"AT&T","TMUS":"T모바일","CHTR":"차터커뮤니케이션","EA":"일렉트로닉아츠","TTWO":"테이크투",
-    "JPM":"JP모건","BRK-B":"버크셔해서웨이","V":"비자","MA":"마스터카드","BAC":"뱅크오브아메리카",
+    "JPM":"JP모건","BRK.B":"버크셔해서웨이","V":"비자","MA":"마스터카드","BAC":"뱅크오브아메리카",
     "WFC":"웰스파고","GS":"골드만삭스","MS":"모건스탠리","C":"씨티그룹","AXP":"아메리칸익스프레스",
     "BLK":"블랙록","SCHW":"찰스슈왑","CB":"처브","PGR":"프로그레시브","ALL":"올스테이트",
     "TRV":"트래블러스","MET":"메트라이프","PRU":"프루덴셜","AFL":"에이플락",
@@ -100,7 +100,7 @@ HEATMAP_US = {
     "Technology":        ["MSFT","AAPL","NVDA","AVGO","AMD","ORCL","MU","AMAT","TXN","ADI"],
     "Consumer Cyclical": ["AMZN","TSLA","HD","MCD","NKE","SBUX"],
     "Communication":     ["GOOGL","META","NFLX","DIS"],
-    "Financial":         ["JPM","BRK-B","V","MA","BAC","WFC"],
+    "Financial":         ["JPM","BRK.B","V","MA","BAC","WFC"],
     "Healthcare":        ["LLY","UNH","JNJ","ABT","PFE"],
     "Industrials":       ["GE","CAT","BA","HON","RTX"],
     "Consumer Defensive":["WMT","PG","COST","KO","PEP"],
@@ -175,33 +175,49 @@ def load_all_kr():
 
 @st.cache_data(ttl=600)
 def load_detail(ticker):
+    result = {"fast":{},"info":{},"hist":pd.DataFrame(),"inst":None,"insider":None,"earnings":None}
     try:
-        tk = yf.Ticker(ticker)
-        hist = tk.history(period="1y")
-        info = tk.info
-        # 실시간 기관 데이터
-        inst = tk.institutional_holders
-        # 실시간 내부자 데이터
-        insider = tk.insider_transactions
-        # 실적 데이터
-        earnings = tk.quarterly_income_stmt
-        return {"hist":hist,"info":info,"inst":inst,"insider":insider,"earnings":earnings}
-    except:
-        return {"hist":pd.DataFrame(),"info":{},"inst":None,"insider":None,"earnings":None}
+        fi = yf.Ticker(ticker).fast_info
+        result["fast"] = {
+            "price": fmt2(fi.last_price or 0),
+            "prev":  fmt2(fi.previous_close or 0),
+            "high":  fmt2(fi.day_high or 0),
+            "low":   fmt2(fi.day_low or 0),
+            "volume": int(fi.three_month_average_volume or 0),
+            "mcap":  int(fi.market_cap or 0),
+        }
+    except: pass
+    try:
+        result["hist"] = yf.Ticker(ticker).history(period="1y")
+    except: pass
+    try:
+        result["info"] = yf.Ticker(ticker).info
+    except: pass
+    try:
+        result["inst"] = yf.Ticker(ticker).institutional_holders
+    except: pass
+    try:
+        result["insider"] = yf.Ticker(ticker).insider_transactions
+    except: pass
+    try:
+        result["earnings"] = yf.Ticker(ticker).quarterly_income_stmt
+    except: pass
+    return result
 
 def make_treemap(df):
     df = df.copy()
     df["change"] = df["change"].apply(fmt2)
+    df["change_str"] = df["change"].apply(lambda x: f"{x:+.2f}%")
     fig = px.treemap(
         df, path=["sector","name"], values="mcap",
         color="change",
         color_continuous_scale=[(0,"#c0392b"),(0.5,"#444"),(1,"#27ae60")],
         color_continuous_midpoint=0, range_color=[-3,3],
-        custom_data=["ticker","price","change"],
+        custom_data=["ticker","price","change_str"],
     )
     fig.update_traces(
-        texttemplate="<b>%{label}</b><br>%{customdata[2]:+.2f}%",
-        hovertemplate="<b>%{label}</b><br>가격: %{customdata[1]:,.2f}<br>등락: %{customdata[2]:+.2f}%<extra></extra>",
+        texttemplate="<b>%{label}</b><br>%{customdata[2]}",
+        hovertemplate="<b>%{label}</b><br>가격: %{customdata[1]:,.2f}<br>등락: %{customdata[2]}<extra></extra>",
         textfont_size=11,
         marker_line_width=2,
         marker_line_color="rgba(0,0,0,0.4)",
@@ -265,8 +281,9 @@ def render_detail(selected, kr_names, is_kr, key_prefix):
     insider = detail["insider"]
     earnings = detail["earnings"]
 
-    price = fmt2(info.get("currentPrice") or info.get("regularMarketPrice") or 0)
-    prev  = fmt2(info.get("previousClose") or price)
+    fast  = detail.get("fast", {})
+    price = fast.get("price") or fmt2(info.get("currentPrice") or info.get("regularMarketPrice") or 0)
+    prev  = fast.get("prev") or fmt2(info.get("previousClose") or price)
     chg   = fmt2((price-prev)/prev*100) if prev else 0.0
     kr_name = kr_names.get(selected, selected) if kr_names else selected
     cls = "pos" if chg>=0 else "neg"
@@ -283,11 +300,11 @@ def render_detail(selected, kr_names, is_kr, key_prefix):
     t1,t2,t3,t4 = st.tabs(["시세","실적","기관매수","내부자"])
 
     with t1:
-        high = fmt2(info.get("dayHigh") or 0)
-        low  = fmt2(info.get("dayLow") or 0)
-        vol  = info.get("volume") or 0
-        prev_close = fmt2(info.get("previousClose") or 0)
-        mcap = info.get("marketCap") or 0
+        high = fast.get("high") or fmt2(info.get("dayHigh") or 0)
+        low  = fast.get("low") or fmt2(info.get("dayLow") or 0)
+        vol  = fast.get("volume") or info.get("volume") or 0
+        prev_close = fast.get("prev") or fmt2(info.get("previousClose") or 0)
+        mcap = fast.get("mcap") or info.get("marketCap") or 0
         per  = info.get("trailingPE")
         pbr  = info.get("priceToBook")
         div  = info.get("dividendYield")
