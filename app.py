@@ -1171,7 +1171,7 @@ def render_asset():
         st.markdown("##### 귀금속 · 원자재")
         for c in COMMODITIES:
             d    = load_asset_price(c["ticker"])
-            hist = load_asset_history(c["ticker"])
+            hist = load_asset_history(c["ticker"], "5y")
             p, chg = d["price"], d["change"]
             color  = chg_color(chg)
             col_info, col_line, col_bar = st.columns([1, 2, 2])
@@ -1203,7 +1203,7 @@ def render_asset():
         st.markdown("##### 환율")
         for fx in FX_PAIRS:
             d    = load_asset_price(fx["ticker"])
-            hist = load_asset_history(fx["ticker"])
+            hist = load_asset_history(fx["ticker"], "5y")
             p, chg = d["price"], d["change"]
             color  = chg_color(chg)
             col_info, col_line, col_bar = st.columns([1, 2, 2])
